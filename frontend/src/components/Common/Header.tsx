@@ -24,7 +24,7 @@ const Header = ({ isTyping = false }) => {
           <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-green-400 border-2 border-white"></div>
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Data AI Assistant</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Safe</h2>
           <p className="text-sm text-gray-600">
             {isTyping ? (
               <span className="flex items-center">
