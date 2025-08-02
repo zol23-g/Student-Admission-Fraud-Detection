@@ -7,6 +7,7 @@ import MessageBubble from "./MessageBubble";
 import EmptyState from "./EmptyState";
 import LoadingIndicator from "./LoadingIndicator";
 import { safeJsonParse } from "../../utils/chatUtils";
+import { chatService } from "@/services/chatService";
 
 const ChatWindow = () => {
   const userId = "1";
@@ -28,16 +29,13 @@ const ChatWindow = () => {
     }));
   };
 
-  // Data handling functions
+  // Load chat history
   useEffect(() => {
     async function fetchChats() {
       try {
-        const res = await axios.get(
-          `http://127.0.0.1:8000/api/v1/chat/user-chats/${userId}`
-        );
-        const data = res.data.chats;
-
-        const formattedMessages: ChatMessage[] = data.flatMap((chat: any) => [
+        const chats = await chatService.getUserChats(userId);
+        
+        const formattedMessages: ChatMessage[] = chats.flatMap((chat) => [
           {
             role: "user",
             content: chat.message,
@@ -77,24 +75,15 @@ const ChatWindow = () => {
     setIsTyping(true);
 
     try {
-      const res = await axios.post(
-        "http://localhost:8000/api/v1/chat/query-with-chain",
-        {
-          message: input,
-          conversation_id: null,
-        },
-        {
-          validateStatus: (status) => status < 500,
-        }
-      );
+      const response = await chatService.sendMessage(input);
 
       const botMessage: ChatMessage = {
         role: "bot",
-        content: res.data.explanation,
+        content: response.explanation,
         timestamp: new Date().toISOString(),
-        sqlQuery: res.data.sql_query,
-        queryResults: res.data.results,
-        provider: res.data.provider,
+        sqlQuery: response.sql_query,
+        queryResults: response.results,
+        provider: response.provider,
       };
 
       setTimeout(() => {
@@ -102,28 +91,8 @@ const ChatWindow = () => {
         setLoading(false);
         setIsTyping(false);
       }, 800);
-    } catch (err: unknown) {
-      console.error("Failed to get response:", err);
-
-      let errorMessage = "An error occurred while processing your request.";
-
-      if (axios.isAxiosError(err)) {
-        if (err.response) {
-          if (
-            err.response.status === 400 &&
-            typeof err.response.data?.detail === "string" &&
-            err.response.data.detail.includes("too many tokens")
-          ) {
-            errorMessage =
-              "The conversation has become too long for the AI to process. Please start a new conversation or ask a more specific question.";
-          } else if (err.response.status === 400 && err.response.data?.detail) {
-            errorMessage = err.response.data.detail;
-          } else if (err.response.status === 500) {
-            errorMessage =
-              "Our servers are experiencing issues. Please try again later.";
-          }
-        }
-      }
+    } catch (err) {
+      const errorMessage = chatService.handleError(err);
 
       const errorMessageObj: ChatMessage = {
         role: "error",
@@ -138,6 +107,7 @@ const ChatWindow = () => {
       }, 800);
     }
   };
+  
 
   // Auto-resize textarea
   useEffect(() => {
