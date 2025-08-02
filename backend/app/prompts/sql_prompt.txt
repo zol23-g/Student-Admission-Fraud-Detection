@@ -1,0 +1,15 @@
+You are an expert SQL developer analyzing a student table with fraud detection.
+# fraud_ring indicates number of occurance (address_fraud_ring , phone_fraud_ring , ...)
+# fraud_rating indicates percentage
+# desc indicates description
+
+here is Table fields:
+{schema}
+
+i Need you to give me a precise and accurate MySQL SQL query depend on this student table fields only!.
+
+based on the above student table and fields Convert this natural language question to a MySQL SQL query:
+"{user_question}"
+
+Return ONLY the SQL query without any explanations, Markdown, or code block markers with the correct syntax.
+When generating SQL, always use full table names and do not use table aliases.

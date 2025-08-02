@@ -1,0 +1,12 @@
+venv
+./__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+*.env
+*.venv
+
+/backend/.env
+app/application_default_credentials.json
