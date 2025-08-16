@@ -1,13 +1,21 @@
 // services/chatService.ts
 import axios from "axios";
+import { QueryResultRow } from "@/utils/queryResultRow";
 
 const API_BASE_URL = "http://localhost:8000/api/v1/chat";
+
+export interface ApiErrorDetail {
+  error: string;
+  message: string;
+  resolution?: string;
+  generated_query?: string;
+}
 
 interface ChatItem {
   message: string;
   explanation: string;
   sql_query: string;
-  query_results: any;
+  query_results: QueryResultRow[] | string;
   provider: string;
   created_at: string;
 }
@@ -15,8 +23,13 @@ interface ChatItem {
 interface ChatResponse {
   explanation: string;
   sql_query: string;
-  results: any;
+  results: QueryResultRow[];
   provider: string;
+  result_count?: number;
+}
+
+interface BackendErrorResponse {
+  detail: ApiErrorDetail;
 }
 
 export const chatService = {
@@ -25,51 +38,57 @@ export const chatService = {
       const response = await axios.get(`${API_BASE_URL}/user-chats/${userId}`);
       return response.data.chats;
     } catch (error) {
-      console.error("Failed to fetch user chats:", error);
-      throw error;
+      const parsedError = this.parseError(error);
+      console.error("Failed to fetch user chats:", parsedError);
+      throw parsedError;
     }
   },
 
   async sendMessage(message: string): Promise<ChatResponse> {
     try {
-      const response = await axios.post(
+      const response = await axios.post<ChatResponse>(
         `${API_BASE_URL}/query-with-chain`,
-        {
-          message,
-          conversation_id: null,
-        },
-        {
-          validateStatus: (status) => status < 500,
-        }
+        { message, conversation_id: null }
       );
       return response.data;
     } catch (error) {
-      console.error("Failed to send message:", error);
-      throw error;
+      const parsedError = this.parseError(error);
+      console.error("Failed to send message:", parsedError);
+      throw parsedError;
     }
   },
 
-  handleError(error: unknown): string {
-    let errorMessage = "An error occurred while processing your request.";
+  parseError(error: unknown): ApiErrorDetail {
+    // Handle Axios error with backend response
+    if (axios.isAxiosError<BackendErrorResponse>(error)) {
+      if (error.response?.data?.detail) {
+        return error.response.data.detail;
+      }
+      return {
+        error: "Network Error",
+        message: error.message,
+        resolution: "Please check your connection and try again"
+      };
+    }
 
-    if (axios.isAxiosError(error)) {
-      if (error.response) {
-        if (
-          error.response.status === 400 &&
-          typeof error.response.data?.detail === "string" &&
-          error.response.data.detail.includes("too many tokens")
-        ) {
-          errorMessage =
-            "The conversation has become too long for the AI to process. Please start a new conversation or ask a more specific question.";
-        } else if (error.response.status === 400 && error.response.data?.detail) {
-          errorMessage = error.response.data.detail;
-        } else if (error.response.status === 500) {
-          errorMessage =
-            "Our servers are experiencing issues. Please try again later.";
-        }
+    // Handle Error objects
+    if (error instanceof Error) {
+      try {
+        return JSON.parse(error.message) as ApiErrorDetail;
+      } catch {
+        return {
+          error: "Error",
+          message: error.message,
+          resolution: "Please try again later"
+        };
       }
     }
 
-    return errorMessage;
-  },
+    // Fallback for unknown errors
+    return {
+      error: "Unknown Error",
+      message: "An unexpected error occurred",
+      resolution: "Please try again later"
+    };
+  }
 };

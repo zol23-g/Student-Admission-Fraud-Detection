@@ -3,7 +3,6 @@ import { QueryResultRow } from "../../utils/queryResultRow";
 import {
   BarChartVisualization,
   PieChartVisualization,
-  TableVisualization,
 } from "../visualizations/ChartVisualizations";
 import {
   determineVisualizationType,

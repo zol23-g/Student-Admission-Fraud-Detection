@@ -50,19 +50,19 @@ const EmptyState: React.FC<EmptyStateProps> = ({ setInput }) => {
           onClick={() => setInput("Show me sales trends for the last quarter")}
           className="px-5 py-3 bg-white rounded-xl border border-gray-200 shadow-sm text-base text-gray-700 hover:bg-gray-50 transition-colors text-left hover:border-blue-300 hover:shadow-md"
         >
-          "Show me sales trends for the last quarter"
+          &quot;Show me sales trends for the last quarter&quot;
         </button>
         <button
           onClick={() => setInput("Compare revenue by product category")}
           className="px-5 py-3 bg-white rounded-xl border border-gray-200 shadow-sm text-base text-gray-700 hover:bg-gray-50 transition-colors text-left hover:border-blue-300 hover:shadow-md"
         >
-          "Compare revenue by product category"
+          &quot;Compare revenue by product category&quot;
         </button>
         <button
           onClick={() => setInput("Create a pie chart of customer demographics")}
           className="px-5 py-3 bg-white rounded-xl border border-gray-200 shadow-sm text-base text-gray-700 hover:bg-gray-50 transition-colors text-left hover:border-blue-300 hover:shadow-md"
         >
-          "Create a pie chart of customer demographics"
+          &quot;Create a pie chart of customer demographics&quot;
         </button>
       </div>
     </div>

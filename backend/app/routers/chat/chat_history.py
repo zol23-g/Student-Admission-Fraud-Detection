@@ -11,6 +11,7 @@ from langchain_community.utilities import SQLDatabase
 from langchain_experimental.sql import SQLDatabaseChain
 from langchain_core.prompts.prompt import PromptTemplate
 from langchain.chains.llm import LLMChain
+from fastapi import HTTPException, status
 
 router = APIRouter(prefix="/chat")
 
@@ -149,14 +150,25 @@ async def query_with_chain(
     """Advanced query using LangChain SQL generation with robust execution"""
     try:
         # Initialize LLM with error handling
-        llm = ChatOpenAI(
-            model="anthropic/claude-3-haiku",
-            openai_api_base="https://openrouter.ai/api/v1",
-            openai_api_key=settings.openai_api_key,
-            temperature=0.1,
-            max_tokens=200,
-            request_timeout=30
-        )
+        try:
+            llm = ChatOpenAI(
+                model="anthropic/claude-3-haiku",
+                openai_api_base="https://openrouter.ai/api/v1",
+                openai_api_key=settings.openai_api_key,
+                temperature=0.1,
+                max_tokens=200,
+            )
+            # Test LLM connection
+            llm.invoke("test")
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "error": "AI service authentication failed",
+                    "message": "Please check your API credentials",
+                    "resolution": "Ensure your OpenRouter API key is valid and has sufficient credits"
+                }
+            )
 
         # Dynamically fetch all column names with error handling
         try:
@@ -169,8 +181,27 @@ async def query_with_chain(
                         AND TABLE_SCHEMA = %s
                     """, (settings.db_name,))
                     columns = [row[0] for row in cursor.fetchall()]
+                    
+                    if not columns:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail={
+                                "error": "No columns found",
+                                "message": "The students table appears to be empty or doesn't exist",
+                                "resolution": "Verify your database schema and table names"
+                            }
+                        )
+        except HTTPException:
+            raise
         except Exception as e:
-            raise ValueError(f"Failed to fetch columns: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "Database connection error",
+                    "message": str(e),
+                    "resolution": "Check database availability and connection settings"
+                }
+            )
 
         # Enhanced prompt with specific instructions
         _DEFAULT_TEMPLATE = """You are a MySQL expert. Convert this question to SQL:
@@ -216,17 +247,38 @@ async def query_with_chain(
                 
                 # Basic SQL validation
                 if not generated_sql.lower().startswith(('select', 'with')):
-                    raise ValueError("Generated query must be a SELECT statement")
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail={
+                            "error": "Invalid query type",
+                            "message": "Generated query must be a SELECT statement",
+                            "generated_query": generated_sql
+                        }
+                    )
                 if ';' in generated_sql[:-1]:
-                    raise ValueError("Query contains multiple statements")
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail={
+                            "error": "Multiple statements detected",
+                            "message": "Query contains multiple SQL statements",
+                            "generated_query": generated_sql
+                        }
+                    )
                 
                 break
+            except HTTPException:
+                raise
             except Exception as e:
                 if attempt == max_retries - 1:
-                    raise
+                    raise HTTPException(
+                        status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                        detail={
+                            "error": "AI service timeout",
+                            "message": "Failed to generate SQL after multiple attempts",
+                            "resolution": "Please try again later or simplify your question"
+                        }
+                    )
                 continue
-
-        print(f"🛠 Generated SQL: {generated_sql}")
 
         # Execute query with enhanced safety
         try:
@@ -235,9 +287,15 @@ async def query_with_chain(
                     cursor.execute(generated_sql)
                     results = cursor.fetchall()
         except Exception as e:
-            raise ValueError(f"Query execution failed: {str(e)}")
-
-        print(f"📊 Found {len(results)} results")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "Query execution failed",
+                    "message": str(e),
+                    "generated_query": generated_sql,
+                    "resolution": "The system generated an invalid query. Please rephrase your question."
+                }
+            )
 
         # Generate explanation with fallback
         try:
@@ -252,7 +310,7 @@ async def query_with_chain(
             """
             
             explanation = llm.invoke(explanation_prompt).content
-        except Exception:
+        except Exception as e:
             explanation = "Results analysis unavailable - please review the raw data"
 
         # Save with transaction handling
@@ -277,12 +335,14 @@ async def query_with_chain(
             "results": results[:3] if results else []
         }
 
-    except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
-    except HTTPException:
-        raise
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Processing failed: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "Unexpected server error",
+                "message": str(e),
+                "resolution": "Please contact support if this persists"
+            }
         )

@@ -1,13 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import { ChatMessage } from "../../utils/queryResultRow";
 import Header from "../Common/Header";
 import InputArea from "../Common/InputArea";
 import MessageBubble from "./MessageBubble";
 import EmptyState from "./EmptyState";
 import LoadingIndicator from "./LoadingIndicator";
-import { safeJsonParse } from "../../utils/chatUtils";
-import { chatService } from "@/services/chatService";
+import { chatService, ApiErrorDetail } from "@/services/chatService";
 
 const ChatWindow = () => {
   const userId = "1";
@@ -82,32 +80,26 @@ const ChatWindow = () => {
         content: response.explanation,
         timestamp: new Date().toISOString(),
         sqlQuery: response.sql_query,
-        queryResults: response.results,
+        queryResults: JSON.stringify(response.results),
         provider: response.provider,
       };
 
-      setTimeout(() => {
-        setMessages((prev) => [...prev, botMessage]);
-        setLoading(false);
-        setIsTyping(false);
-      }, 800);
-    } catch (err) {
-      const errorMessage = chatService.handleError(err);
-
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (error) {
+      const errorDetail = error as ApiErrorDetail;
+      
       const errorMessageObj: ChatMessage = {
         role: "error",
-        content: errorMessage,
+        content: JSON.stringify(errorDetail),
         timestamp: new Date().toISOString(),
       };
 
-      setTimeout(() => {
-        setMessages((prev) => [...prev, errorMessageObj]);
-        setLoading(false);
-        setIsTyping(false);
-      }, 800);
+      setMessages((prev) => [...prev, errorMessageObj]);
+    } finally {
+      setLoading(false);
+      setIsTyping(false);
     }
   };
-  
 
   // Auto-resize textarea
   useEffect(() => {
@@ -221,7 +213,6 @@ const ChatWindow = () => {
         onAttach={() => console.log('Attach clicked')}
         onEmoji={() => console.log('Emoji clicked')}
       />
-      
       <style jsx global>{`
         @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap");
 

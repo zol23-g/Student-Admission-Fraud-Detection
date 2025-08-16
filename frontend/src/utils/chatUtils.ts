@@ -1,5 +1,5 @@
 // utils/chatUtils.ts
-import { QueryResultRow, ChatMessage } from "./queryResultRow";
+import { QueryResultRow} from "./queryResultRow";
 
 export const safeJsonParse = (
   str: string | QueryResultRow[] | undefined | null
