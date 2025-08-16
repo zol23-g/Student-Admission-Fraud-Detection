@@ -5,7 +5,7 @@ const Header = ({ isTyping = false }) => {
     <div className="bg-white/90 backdrop-blur-md border-b border-gray-200/70 p-5 flex items-center justify-between">
       <div className="flex items-center space-x-4">
         <div className="relative">
-          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg">
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#005D5B] to-[#008080] flex items-center justify-center text-white font-bold shadow-lg">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-6 w-6"
@@ -24,17 +24,19 @@ const Header = ({ isTyping = false }) => {
           <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-green-400 border-2 border-white"></div>
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Safe</h2>
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-[#008080] via-[#005D5B] to-[#008080] bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
+  SAFE
+</h2>
           <p className="text-sm text-gray-600">
             {isTyping ? (
               <span className="flex items-center">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 mr-1.5 animate-pulse"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#008080] mr-1.5 animate-pulse"></span>
                 <span
-                  className="w-2.5 h-2.5 rounded-full bg-blue-500 mr-1.5 animate-pulse"
+                  className="w-2.5 h-2.5 rounded-full bg-[#005D5B] mr-1.5 animate-pulse"
                   style={{ animationDelay: "0.2s" }}
                 ></span>
                 <span
-                  className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"
+                  className="w-2.5 h-2.5 rounded-full bg-[#005D5B] animate-pulse"
                   style={{ animationDelay: "0.4s" }}
                 ></span>
               </span>

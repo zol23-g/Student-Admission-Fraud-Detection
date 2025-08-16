@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { ChatMessage } from "../../utils/queryResultRow";
 import CodeBlock from "./CodeBlock";
 import QueryResultsTable from "./QueryResultsTable";
@@ -9,6 +9,10 @@ interface MessageBubbleProps {
   message: ChatMessage;
   expandedDetails: boolean;
   toggleDetails: () => void;
+  onEditMessage?: (newMessage: string) => void;
+  isEditing?: boolean;
+  onSaveEdit?: () => void;
+  onCancelEdit?: () => void;
 }
 
 const ErrorMessage: React.FC = () => {
@@ -47,12 +51,64 @@ const ErrorMessage: React.FC = () => {
   );
 };
 
+const EditIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-5 w-5"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+    />
+  </svg>
+);
+
+const CopyIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-4 w-4"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+    />
+  </svg>
+);
+
 const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   expandedDetails,
   toggleDetails,
+  onEditMessage,
+  isEditing,
+  onSaveEdit,
+  onCancelEdit,
 }) => {
+  const [editedContent, setEditedContent] = useState(message.content);
   const queryResults = safeJsonParse(message.queryResults);
+
+  const handleSave = () => {
+    if (onEditMessage) {
+      onEditMessage(editedContent);
+    }
+    if (onSaveEdit) {
+      onSaveEdit();
+    }
+  };
+
+  const handleCopy = () => {
+    copyToClipboard(editedContent);
+  };
 
   const formatTextContent = (text: string) => {
     const parts = text.split(/(\*\*[^*]+\*\*|__[^_]+__)/g);
@@ -69,7 +125,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           if (line.match(/^\d+\./)) {
             return (
               <div key={lineIndex} className="flex mb-2 pl-4">
-                <span className="text-blue-600 font-bold mr-3 min-w-[24px]">
+                <span className="text-[#005D5B] font-bold mr-3 min-w-[24px]">
                   {line.match(/^\d+/)?.[0]}.
                 </span>
                 <span className="text-gray-800">
@@ -80,7 +136,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           } else if (line.match(/^-\s/)) {
             return (
               <div key={lineIndex} className="flex mb-2 pl-4">
-                <span className="text-blue-600 font-bold mr-3">•</span>
+                <span className="text-[#005D5B] font-bold mr-3">•</span>
                 <span className="text-gray-800">
                   {line.replace(/^-\s*/, "")}
                 </span>
@@ -147,11 +203,53 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     });
   };
 
+  if (message.role === "user" && isEditing) {
+    return (
+      <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 shadow-md mx-3" style={{ maxWidth: "90%" }}>
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-bold text-[#005D5B]">Editing your question</span>
+        </div>
+        <textarea
+          value={editedContent}
+          onChange={(e) => setEditedContent(e.target.value)}
+          className="w-full p-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-[#005D5B] focus:border-[#005D5B]"
+          rows={3}
+          autoFocus
+          style={{ minWidth: "600px" }}
+        />
+        <div className="flex justify-between items-center mt-2">
+          <button
+            onClick={handleCopy}
+            className="flex items-center text-sm text-gray-600 hover:text-gray-800"
+            title="Copy to clipboard"
+          >
+            <CopyIcon />
+            <span className="ml-1">Copy</span>
+          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={onCancelEdit}
+              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-3 py-1 text-sm text-white bg-[#005D5B] hover:bg-[#008080] rounded-lg"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`p-4 rounded-2xl transition-all duration-200 mx-3 ${
         message.role === "user"
-          ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg"
+          ? "bg-gradient-to-r from-[#005D5B] to-[#008080] text-white shadow-lg"
           : message.role === "error"
           ? "bg-red-50 text-red-800 border border-red-200 shadow-md"
           : "bg-white text-gray-800 border border-gray-300 shadow-md"
@@ -175,7 +273,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             {message.role === "user"
               ? "You"
               : message.role === "error"
-              ? "Error"
+              ? "Warning !"
               : "AI Assistant"}
           </span>
           {message.role === "bot" && message.provider && (
@@ -218,7 +316,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               <div className="mt-4">
                 <button
                   onClick={toggleDetails}
-                  className="flex items-center text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  className="flex items-center text-sm text-[#005D5B] hover:text-[#008080] font-medium"
                 >
                   {expandedDetails
                     ? "Hide details"
@@ -252,23 +350,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                                 </h4>
                                 <button
                                   onClick={() => copyToClipboard(message.sqlQuery || "")}
-                                  className="text-gray-500 hover:text-blue-600 p-1 rounded hover:bg-gray-100 transition-colors"
+                                  className="text-gray-500 hover:text-[#005D5B] p-1 rounded hover:bg-gray-100 transition-colors"
                                   title="Copy to clipboard"
                                 >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-4 w-4"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
-                                    />
-                                  </svg>
+                                  <CopyIcon />
                                 </button>
                               </div>
                               <div className="bg-gray-900 p-3 rounded-lg overflow-x-auto border border-gray-700">
@@ -298,7 +383,23 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             )}
           </>
         ) : (
-          <p className="whitespace-pre-wrap">{message.content}</p>
+          <>
+            <p className="whitespace-pre-wrap">{message.content}</p>
+            <div className="flex justify-end mt-2">
+              {onEditMessage && (
+                <button
+                  onClick={() => {
+                    setEditedContent(message.content);
+                    onEditMessage(message.content);
+                  }}
+                  className="text-gray-400 hover:text-[#005D5B] p-1 rounded hover:bg-gray-100 transition-colors"
+                  title="Edit message"
+                >
+                  <EditIcon />
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

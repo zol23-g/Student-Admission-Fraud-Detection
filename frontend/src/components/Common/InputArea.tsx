@@ -74,7 +74,7 @@ const InputArea: React.FC<InputAreaProps> = ({
             placeholder="Ask about your data..."
             onKeyDown={handleKeyDown}
             rows={1}
-            className="w-full p-4 pr-14 rounded-xl bg-white text-gray-800 border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-300 hover:border-gray-400 shadow-sm resize-none max-h-80 text-[15px]"
+            className="w-full p-4 pr-14 rounded-xl bg-white text-gray-800 border border-gray-300 focus:border-[#008080] focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-300 hover:border-gray-400 shadow-sm resize-none max-h-80 text-[15px]"
             style={{ minHeight: "56px" }}
             disabled={loading}
           />
@@ -84,7 +84,7 @@ const InputArea: React.FC<InputAreaProps> = ({
             className={`absolute right-3 bottom-3 p-2 rounded-full transition-all duration-300 ${
               loading || !input.trim()
                 ? "text-gray-300 cursor-not-allowed"
-                : "text-white bg-blue-500 hover:bg-blue-600 shadow-lg"
+                : "text-white bg-[#005D5B] hover:bg-[#005D5B] shadow-lg"
             }`}
             aria-label="Send message"
           >
