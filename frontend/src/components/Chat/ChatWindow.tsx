@@ -16,15 +16,40 @@ const ChatWindow = () => {
   const [expandedDetails, setExpandedDetails] = useState<{
     [key: number]: boolean;
   }>({});
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Handle scroll events
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const isNearBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+      setShowScrollButton(!isNearBottom);
+    };
+
+    // Initial check
+    handleScroll();
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [messages]);
 
   const toggleDetails = (index: number) => {
     setExpandedDetails((prev) => ({
       ...prev,
       [index]: !prev[index],
     }));
+  };
+
+  // Scroll to bottom function
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   // Load chat history
@@ -101,6 +126,51 @@ const ChatWindow = () => {
     }
   };
 
+  const handleEditMessage = async (newMessage: string) => {
+    if (editingMessageId === null) return;
+    
+    try {
+      // Update the message in local state first for instant feedback
+      setMessages(prev => prev.map((msg, idx) => 
+        idx === editingMessageId ? { ...msg, content: newMessage } : msg
+      ));
+      
+      // Send the edited message to the backend
+      setLoading(true);
+      setIsTyping(true);
+
+      const response = await chatService.sendMessage(newMessage);
+
+      const botMessage: ChatMessage = {
+        role: "bot",
+        content: response.explanation,
+        timestamp: new Date().toISOString(),
+        sqlQuery: response.sql_query,
+        queryResults: JSON.stringify(response.results),
+        provider: response.provider,
+      };
+
+      // Replace the old conversation with the new one
+      setMessages(prev => [
+        ...prev.slice(0, editingMessageId + 1),
+        botMessage
+      ]);
+      
+    } catch (error) {
+      const errorDetail = error as ApiErrorDetail;
+      const errorMessageObj: ChatMessage = {
+        role: "error",
+        content: JSON.stringify(errorDetail),
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, errorMessageObj]);
+    } finally {
+      setLoading(false);
+      setIsTyping(false);
+      setEditingMessageId(null);
+    }
+  };
+
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
@@ -112,18 +182,21 @@ const ChatWindow = () => {
     }
   }, [input]);
 
-  // Scroll to bottom
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollToBottom();
   }, [messages, loading]);
 
   return (
-    <div className="mt-4 flex flex-col h-[95vh] w-full max-w-6xl mx-auto bg-gradient-to-br from-gray-50 to-blue-50 text-gray-800 rounded-2xl shadow-xl overflow-hidden font-montserrat">
+    <div className="mt-4 flex flex-col h-[95vh] w-full max-w-6xl mx-auto bg-gradient-to-br from-gray-50 to-blue-50 text-gray-800 rounded-2xl shadow-xl overflow-hidden font-montserrat relative">
       {/* Header */}
       <Header isTyping={isTyping} />
 
       {/* Chat messages container */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto p-6 space-y-5 relative"
+      >
         {messages.length === 0 && !loading ? (
           <EmptyState setInput={setInput} />
         ) : (
@@ -142,7 +215,7 @@ const ChatWindow = () => {
                 <div
                   className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-sm ${
                     msg.role === "user"
-                      ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                      ? "bg-gradient-to-br from-[#005D5B] to-[#008080] text-white"
                       : msg.role === "error"
                       ? "bg-red-100 text-red-600 border border-red-200"
                       : "bg-white text-gray-700 border border-gray-300"
@@ -193,6 +266,13 @@ const ChatWindow = () => {
                   message={msg}
                   expandedDetails={!!expandedDetails[index]}
                   toggleDetails={() => toggleDetails(index)}
+                  onEditMessage={(newMessage) => {
+                    setEditingMessageId(index);
+                    handleEditMessage(newMessage);
+                  }}
+                  isEditing={editingMessageId === index}
+                  onSaveEdit={() => setEditingMessageId(null)}
+                  onCancelEdit={() => setEditingMessageId(null)}
                 />
               </div>
             </div>
@@ -202,6 +282,32 @@ const ChatWindow = () => {
         {loading && <LoadingIndicator />}
 
         <div ref={messagesEndRef} />
+
+        {/* Scroll to bottom button */}
+        {showScrollButton && (
+          <div className="fixed bottom-44 left-1/2 transform -translate-x-1/2 z-50">
+            <button
+              onClick={scrollToBottom}
+              className="bg-[#005D5B] hover:bg-[#008080] text-white rounded-full p-3 shadow-lg transition-all duration-200 hover:scale-110 flex items-center justify-center"
+              aria-label="Scroll to bottom"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Input area */}
